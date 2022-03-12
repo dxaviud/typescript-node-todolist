@@ -1,12 +1,22 @@
 import "reflect-metadata";
 import express from "express";
+import { ApolloServer } from "apollo-server-express";
 import { User } from "./entities/User";
 import { createConnection } from "typeorm";
+import { typeDefs } from "./graphql/schema";
 
 // iife
 (async () => {
   const app = express();
   const PORT = 4000;
+
+  const server = new ApolloServer({
+    typeDefs,
+  });
+
+  await server.start();
+
+  server.applyMiddleware({ app });
 
   await createConnection();
 
