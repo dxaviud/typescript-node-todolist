@@ -4,29 +4,30 @@ import {
   Column,
   CreateDateColumn,
   Entity,
-  OneToMany,
+  ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
-import { Todo } from "./Todo";
+import { User } from "./User";
 
 @ObjectType()
 @Entity()
-export class User extends BaseEntity {
+export class Todo extends BaseEntity {
   @Field()
   @PrimaryGeneratedColumn()
   id!: number;
 
   @Field()
-  @Column({ unique: true })
-  username!: string;
+  @Column()
+  title!: string;
 
   @Field()
   @Column()
-  email!: string;
+  description!: string;
 
+  @Field()
   @Column()
-  passwordHash!: string;
+  userId!: number;
 
   @Field(() => String)
   @CreateDateColumn()
@@ -36,6 +37,6 @@ export class User extends BaseEntity {
   @UpdateDateColumn()
   updatedAt: Date;
 
-  @OneToMany(() => Todo, (todo) => todo.userId, { cascade: true })
-  todos: Todo[];
+  @ManyToOne(() => User, (user) => user.todos)
+  user: User;
 }
