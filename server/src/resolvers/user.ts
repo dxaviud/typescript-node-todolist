@@ -48,6 +48,10 @@ export class UserResolver {
     @Arg("password") password: string,
     @Ctx() { req }: Context
   ): Promise<UserResponse> {
+    if (req.session.userId) {
+      return { error: "still logged in" };
+    }
+
     const usernameTaken = await User.findOne({ username });
     if (usernameTaken) {
       return { error: "username taken" };
@@ -89,15 +93,14 @@ export class UserResolver {
 
   @Mutation(() => Boolean)
   logout(@Ctx() { req, res }: Context) {
-    let success;
+    console.log("logging out");
+    let success = true;
+    res.clearCookie(COOKIE_NAME);
     req.session.destroy((err) => {
-      res.clearCookie(COOKIE_NAME);
       if (err) {
-        console.log("couldn't clear cookie: ", err);
+        console.log("Error destroying session: ", err);
         success = false;
-        return;
       }
-      success = true;
     });
     return success;
   }
