@@ -11,6 +11,7 @@ import {
 import { Context } from "../context";
 import { Todo } from "../entities/Todo";
 import { authenticated } from "../middleware/authenticated";
+import { internal } from "../middleware/internal";
 
 @ObjectType()
 class TodoResponse {
@@ -20,7 +21,7 @@ class TodoResponse {
   @Field(() => Todo, { nullable: true })
   todo?: Todo;
 
-  @Field(() => [Todo])
+  @Field(() => [Todo], { nullable: true })
   todos?: Todo[];
 }
 
@@ -30,9 +31,9 @@ export class TodoResolver {
   @UseMiddleware(authenticated)
   async todoByTitle(
     @Arg("title") title: string,
-    @Ctx() { req }: Context
+    @Ctx() { payload }: Context
   ): Promise<TodoResponse | null> {
-    const userId = req.session.userId;
+    const userId = payload!.userId;
     const todo = await Todo.findOne({ where: { title, userId } });
     if (!todo) {
       return null;
@@ -42,8 +43,8 @@ export class TodoResolver {
 
   @Query(() => TodoResponse)
   @UseMiddleware(authenticated)
-  async todos(@Ctx() { req }: Context): Promise<TodoResponse> {
-    const userId = req.session.userId;
+  async todos(@Ctx() { payload }: Context): Promise<TodoResponse> {
+    const userId = payload!.userId;
     const todos = await Todo.find({ where: { userId } });
     return { todos };
   }
@@ -84,9 +85,9 @@ export class TodoResolver {
   async createTodo(
     @Arg("title") title: string,
     @Arg("description") description: string,
-    @Ctx() { req }: Context
+    @Ctx() { payload }: Context
   ): Promise<TodoResponse> {
-    const userId = req.session.userId;
+    const userId = parseInt(payload!.userId);
     const titleExists = await Todo.findOne({ where: { title, userId } });
     if (titleExists) {
       return TITLE_EXISTS;
@@ -94,10 +95,9 @@ export class TodoResolver {
     const todo = new Todo();
     todo.title = title;
     todo.description = description;
-    todo.userId = userId!;
-    todo.save();
+    todo.userId = userId;
 
-    return { todo };
+    return { todo: await todo.save() };
   }
 
   @Mutation(() => TodoResponse)
@@ -106,9 +106,9 @@ export class TodoResolver {
     @Arg("oldTitle") oldTitle: string,
     @Arg("title") title: string,
     @Arg("description") description: string,
-    @Ctx() { req }: Context
+    @Ctx() { payload }: Context
   ): Promise<TodoResponse> {
-    const userId = req.session.userId;
+    const userId = payload!.userId;
     if (oldTitle !== title) {
       const titleExists = await Todo.findOne({ where: { title, userId } });
       if (titleExists) {
@@ -121,7 +121,7 @@ export class TodoResolver {
     }
     todo.title = title;
     todo.description = description;
-    todo.save();
+    await todo.save();
 
     return { todo };
   }
@@ -130,9 +130,9 @@ export class TodoResolver {
   @UseMiddleware(authenticated)
   async deleteTodo(
     @Arg("title") title: string,
-    @Ctx() { req }: Context
+    @Ctx() { payload }: Context
   ): Promise<TodoResponse> {
-    const userId = req.session.userId;
+    const userId = payload!.userId;
     const todo = await Todo.findOne({ where: { title, userId } });
     if (!todo) {
       return TODO_NOT_FOUND;
@@ -140,6 +140,16 @@ export class TodoResolver {
     await Todo.remove([todo]);
 
     return { todo };
+  }
+
+  @Query(() => TodoResponse)
+  @UseMiddleware(internal)
+  async internalAllTodos(@Arg("passphrase") passphrase: string) {
+    if (passphrase === "falafel") {
+      const todos = await Todo.find();
+      return { todos };
+    }
+    return { error: "incorrect passphrase" };
   }
 }
 

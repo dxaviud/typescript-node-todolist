@@ -1,42 +1,30 @@
-import "reflect-metadata";
+import { ApolloServer } from "apollo-server-express";
+import cookieParser from "cookie-parser";
 import "dotenv-safe/config";
 import express from "express";
-import session from "express-session";
-// import cors from "cors";
-import { ApolloServer } from "apollo-server-express";
-import { createConnection } from "typeorm";
+import "reflect-metadata";
 import { buildSchema } from "type-graphql";
-import { COOKIE_NAME, __prod__ } from "./constants";
-import { UserResolver } from "./resolvers/user";
+import { createConnection } from "typeorm";
+import { PORT } from "./constants";
+import { baseHandler, refreshUserAccessToken } from "./handlers";
 import { TodoResolver } from "./resolvers/todo";
+import { UserResolver } from "./resolvers/user";
 
 // iife
 (async () => {
   await createConnection();
 
   const app = express();
-
   // app.use(
   //   cors({
   //     origin: process.env.CORS_ORIGIN,
   //     credentials: true,
   //   })
   // );
-  app.use(
-    session({
-      name: COOKIE_NAME,
-      cookie: {
-        maxAge: 1000 * 60 * 60 * 24 * 365 * 10, // 10 years
-        httpOnly: true,
-        sameSite: "lax", // csrf
-        secure: false, // cookie only works in https
-        // domain: __prod__ ? ".exmple.com" : undefined,
-      },
-      saveUninitialized: true,
-      secret: process.env.SESSION_SECRET!,
-      resave: false,
-    })
-  );
+  app.use(cookieParser());
+
+  app.get("/", baseHandler);
+  app.post("/refresh_token", refreshUserAccessToken);
 
   const apolloServer = new ApolloServer({
     schema: await buildSchema({
@@ -50,12 +38,6 @@ import { TodoResolver } from "./resolvers/todo";
 
   apolloServer.applyMiddleware({ app });
 
-  app.get("/", async (_, res) => {
-    res.send("hello");
-    console.log("request to /");
-  });
-
-  const PORT = parseInt(process.env.PORT!);
   app.listen(PORT, () => {
     console.log("express server started on port", PORT);
   });

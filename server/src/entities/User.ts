@@ -36,6 +36,9 @@ export class User extends BaseEntity {
   @UpdateDateColumn()
   updatedAt: Date;
 
+  @Column("int", { default: 0 })
+  tokenVersion: number;
+
   @OneToMany(() => Todo, (todo) => todo.userId, { cascade: true })
   todos: Todo[];
 }
